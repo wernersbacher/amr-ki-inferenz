@@ -1,8 +1,5 @@
-from email.mime import image
 import glob
 import cv2
-import dataAugmentater
-import matplotlib.pyplot as plt
 
 
 def load_images_from_directory(directory):
@@ -27,12 +24,3 @@ def image_preprocess(image):
     image = cv2.resize(image, (200, 66))  # input image size (200,66) Nvidia model
     image = image / 255  # normalizing, the processed image becomes black for some reason.  do we need this?
     return image
-
-
-def augment_image(image, steering_angle):
-    return dataAugmentater.random_augment(image, steering_angle)
-
-
-def show_image(image):
-    plt.imshow(image)
-    plt.show()
