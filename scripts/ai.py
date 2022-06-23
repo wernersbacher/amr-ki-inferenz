@@ -1,15 +1,14 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 
 import rospy
-import random
 import cv2
 import time
 import os
 import numpy as np
-from keras import models
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
 from sensor_msgs.msg import Image
+import tflite_runtime.interpreter as tflite
 
 from cv_bridge import CvBridge, CvBridgeError
 
@@ -17,8 +16,8 @@ bridge = CvBridge()
 
 FPS_INTERFERENZ = 0  # set 0 to save every image!
 
-MODEL_NAME = "NVidiaSingle_nvidiaSingle-13-06-2022-11_25_53.h5"
-MODEL_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "models", MODEL_NAME)
+MODEL_NAME = "model.tflite"
+MODEL_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../models", MODEL_NAME)
 
 
 def image_preprocess(image):
@@ -62,7 +61,37 @@ def get_richtung(angle):
 
     return richtung
 
+
 class KI:
+
+    def __init__(self):
+        self.interpreter = tflite.Interpreter(model_path=MODEL_PATH)
+        self.interpreter.allocate_tensors()
+        self.input_details = self.interpreter.get_input_details()
+        self.output_details = self.interpreter.get_output_details()
+
+        self.throttle = 0.27
+        self.steering = 0
+
+        self.last_image_saved = 0
+
+    def predict(self, img):
+        preprocessed_img = image_preprocess(img)
+        img_array = np.asarray(preprocessed_img)
+        img_array = np.expand_dims(img_array, axis=0)
+        img_array = np.float32(img_array)
+
+        self.interpreter.set_tensor(self.input_details[0]['index'], img_array)
+        self.interpreter.invoke()
+
+        prediction = self.interpreter.get_tensor(self.output_details[0]['index'])
+
+        steering_angle = prediction[0][0]
+
+        return steering_angle
+
+
+class KIConn:
 
     def __init__(self) -> None:
 
@@ -70,14 +99,16 @@ class KI:
         # filenames = next(walk(test_path), (None, None, []))[2]  # [] if no file
 
         print("Loading model")
-        self.model = models.load_model(MODEL_PATH)
+
+        self.KI = KI()
+
         print("Done loading model")
 
         rospy.loginfo("Setting Up the Node...")
         rospy.init_node('amr_ki_interferenz')
 
         # --- Create the Subscriber to Twist commands
-        self.publisher_twist = rospy.Publisher("/cmd_vel", Twist, queue_size = 1)
+        self.publisher_twist = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
         self.subscriber_img = rospy.Subscriber("/camera/image_raw", Image, self.update_img)
 
         self.throttle = 0.27
@@ -104,12 +135,10 @@ class KI:
 
         image = bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
 
-        preprocessed_img = image_preprocess(image)
-        img_array = np.asarray(preprocessed_img)
-        img_array = np.expand_dims(img_array, axis=0)
-        prediction = self.model.predict([img_array])
-        steering_angle = prediction[0][0]
-        rospy.loginfo(f"Calculated steering angle of {steering_angle} ({get_richtung(steering_angle)}) ")
+        steering_angle = self.KI.predict(image)
+        t2 = time.time()
+        rospy.loginfo(f"Calculated steering angle of {steering_angle} ({get_richtung(steering_angle)}) "
+                      f"(took {int((t2-now)*1000)}ms) ")
         self.steering = steering_angle
 
         self.update_twist()
@@ -119,7 +148,7 @@ if __name__ == '__main__':
     try:
         print("Starting KI")
 
-        KI()
+        KIConn()
         rospy.spin()
     except rospy.ROSInterruptException as e:
         rospy.loginfo("Goodbye.")

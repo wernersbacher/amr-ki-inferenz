@@ -8,10 +8,10 @@ import imageEditor
 import random
 
 FILE_FORMAT = ".png"
-INPUT_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "images", "output", '*' + FILE_FORMAT)
-INPUT_AUG_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "images", "outputAug", '*' + FILE_FORMAT)
+INPUT_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../images", "output", '*' + FILE_FORMAT)
+INPUT_AUG_DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../images", "outputAug", '*' + FILE_FORMAT)
 model_name = "NVidiaSingle_nvidiaSingle-13-06-2022-11_25_53.h5"
-model_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "models", model_name)
+model_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../models", model_name)
 number_of_runs = 10
 # filenames = next(walk(test_path), (None, None, []))[2]  # [] if no file
 
