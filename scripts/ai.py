@@ -5,7 +5,6 @@ import random
 import cv2
 import time
 import os
-import imageEditor
 import numpy as np
 from keras import models
 from geometry_msgs.msg import Twist
@@ -20,6 +19,16 @@ FPS_INTERFERENZ = 0  # set 0 to save every image!
 
 MODEL_NAME = "NVidiaSingle_nvidiaSingle-13-06-2022-11_25_53.h5"
 MODEL_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "models", MODEL_NAME)
+
+
+def image_preprocess(image):
+    height, _, _ = image.shape
+    image = image[int(height / 3):, :, :]  # remove top third of the image, as it is not relavant for lane following
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2YUV)  # Nvidia model said it is best to use YUV color space
+    image = cv2.GaussianBlur(image, (3, 3), 0)
+    image = cv2.resize(image, (200, 66))  # input image size (200,66) Nvidia model
+    image = image / 255  # normalizing, the processed image becomes black for some reason.  do we need this?
+    return image
 
 
 def convert_to_twist(throttle, steering):
@@ -95,7 +104,7 @@ class KI:
 
         image = bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
 
-        preprocessed_img = imageEditor.image_preprocess(image)
+        preprocessed_img = image_preprocess(image)
         img_array = np.asarray(preprocessed_img)
         img_array = np.expand_dims(img_array, axis=0)
         prediction = self.model.predict([img_array])
