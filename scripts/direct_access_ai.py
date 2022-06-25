@@ -6,13 +6,15 @@ from types import SimpleNamespace
 import numpy as np
 import os
 
+SPEED = 0.265
+
 MODEL_NAME = "model.tflite"
 MODEL_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../models", MODEL_NAME)
 
 a = {
     "colors": True,
     "video_stream_provider": 0,
-    "fps": 25,
+    "fps": 15,
     "width": 300,
     "height": 200,
     "camera_name": "camera",
@@ -73,7 +75,7 @@ class KI:
         self.input_details = self.interpreter.get_input_details()
         self.output_details = self.interpreter.get_output_details()
 
-        self.throttle = 0.27
+        self.throttle = SPEED
         self.steering = 0
 
         self.last_image_saved = 0
@@ -128,7 +130,7 @@ def loop_img():
     except ValueError:
         fps = fps_cam
 
-    rospy.loginfo(f"Publishing at {fps} FPS")
+    rospy.loginfo(f"Watching at {fps} FPS")
     rate = rospy.Rate(fps)
 
     # Loop through video frames.
@@ -181,7 +183,7 @@ def loop_img():
             img_out = cv2.resize(img, (args.width, args.height))
 
         steering_angle = ki.predict(img_out)
-        twist_msg = convert_to_twist(0.27, steering_angle)
+        twist_msg = convert_to_twist(SPEED, steering_angle)
         publisher_twist.publish(twist_msg)
 
         rate.sleep()
