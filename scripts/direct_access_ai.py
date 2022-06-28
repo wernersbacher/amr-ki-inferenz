@@ -5,8 +5,11 @@ import tflite_runtime.interpreter as tflite
 from types import SimpleNamespace
 import numpy as np
 import os
+import time
 
-SPEED = 0.265
+SPEED = 0.255
+
+RECORD = False
 
 MODEL_NAME = "model.tflite"
 MODEL_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../models", MODEL_NAME)
@@ -27,10 +30,11 @@ args = SimpleNamespace(**a)
 
 def image_preprocess(image):
     height, _, _ = image.shape
-    image = image[int(height / 3):, :, :]  # remove top third of the image, as it is not relavant for lane following
+    image = image[int(height/3):, :, :]  # remove top third of the image, as it is not relavant for lane following
+    #image = image[50:250, :, :]  # remove top third of the image, as it is not relavant for lane following
     image = cv2.cvtColor(image, cv2.COLOR_RGB2YUV)  # Nvidia model said it is best to use YUV color space
     image = cv2.GaussianBlur(image, (3, 3), 0)
-    image = cv2.resize(image, (200, 66))  # input image size (200,66) Nvidia model
+    image = cv2.resize(image, (200, 6 6))  # input image size (200,66) Nvidia model
     image = image / 255  # normalizing, the processed image becomes black for some reason.  do we need this?
     return image
 
@@ -104,6 +108,10 @@ def loop_img():
 
     rospy.init_node('amr_ki_interferenz')
     publisher_twist = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
+    id = 1
+
+    dir = "/var/recorded_data/ki_interferenz"+str(int(time.time()))
+    os.mkdir(dir)
 
     # convert to int?
     try:
@@ -135,6 +143,7 @@ def loop_img():
 
     # Loop through video frames.
     while not rospy.is_shutdown() and video.grab():
+        t1 = time.time()
         tmp, img_color = video.retrieve()
 
         # converting to gray-scale
@@ -185,6 +194,18 @@ def loop_img():
         steering_angle = ki.predict(img_out)
         twist_msg = convert_to_twist(SPEED, steering_angle)
         publisher_twist.publish(twist_msg)
+        t2 = time.time()
+        
+        if RECORD:
+            file_name = f"img_{id}_{SPEED}_{steering_angle:.4f}_{time.time()}.png"
+            path = f"{dir}/{file_name}"
+            m1 = time.time()	
+            cv2.imwrite(path, img_out)
+            id+=1
+        
+        tdiff = int((t2-t1)*1000)
+
+        print(f"time loop: {tdiff}")
 
         rate.sleep()
 
