@@ -9,7 +9,7 @@ import time
 
 SPEED = 0.250
 
-RECORD = True
+RECORD = False
 
 MODEL_NAME = "model.tflite"
 MODEL_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../models", MODEL_NAME)
